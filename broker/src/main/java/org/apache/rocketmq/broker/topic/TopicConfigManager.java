@@ -45,8 +45,8 @@ public class TopicConfigManager extends ConfigManager {
     private static final long LOCK_TIMEOUT_MILLIS = 3000;
     private transient final Lock lockTopicConfigTable = new ReentrantLock();
 
-    private final ConcurrentMap<String, TopicConfig> topicConfigTable =
-        new ConcurrentHashMap<String, TopicConfig>(1024);
+    private final ConcurrentMap<String /*topic name */, TopicConfig> topicConfigTable =
+        new ConcurrentHashMap<String, TopicConfig>(1024); /* topic配置表*/
     private final DataVersion dataVersion = new DataVersion();
     private final Set<String> systemTopicList = new HashSet<String>();
     private transient BrokerController brokerController;
@@ -154,7 +154,7 @@ public class TopicConfigManager extends ConfigManager {
                     if (topicConfig != null)
                         return topicConfig;
 
-                    TopicConfig defaultTopicConfig = this.topicConfigTable.get(defaultTopic);
+                    TopicConfig defaultTopicConfig = this.topicConfigTable.get(defaultTopic); /* 如有producer发送的是AUTO_CREATE_TOPIC_KEY_TOPIC TBW102*/
                     if (defaultTopicConfig != null) {
                         if (defaultTopic.equals(MixAll.AUTO_CREATE_TOPIC_KEY_TOPIC)) {
                             if (!this.brokerController.getBrokerConfig().isAutoCreateTopicEnable()) {
@@ -163,7 +163,7 @@ public class TopicConfigManager extends ConfigManager {
                         }
 
                         if (PermName.isInherited(defaultTopicConfig.getPerm())) {
-                            topicConfig = new TopicConfig(topic);
+                            topicConfig = new TopicConfig(topic); /* 就自动创建这个新的topic   */
 
                             int queueNums =
                                 clientDefaultTopicQueueNums > defaultTopicConfig.getWriteQueueNums() ? defaultTopicConfig

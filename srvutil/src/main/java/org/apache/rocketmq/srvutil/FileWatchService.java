@@ -33,7 +33,7 @@ import org.apache.rocketmq.common.constant.LoggerName;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
 
-public class FileWatchService extends ServiceThread {
+public class FileWatchService extends ServiceThread { /* 通用的文件监听服务， 传入Listener即可实现监听*/
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.COMMON_LOGGER_NAME);
 
     private final List<String> watchFiles;

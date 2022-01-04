@@ -66,7 +66,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
                                           RemotingCommand request) throws RemotingCommandException {
         SendMessageContext mqtraceContext;
         switch (request.getCode()) {
-            case RequestCode.CONSUMER_SEND_MSG_BACK:
+            case RequestCode.CONSUMER_SEND_MSG_BACK: /* consumer 消费失败， 退货*/
                 return this.consumerSendMsgBack(ctx, request);
             default:
                 SendMessageRequestHeader requestHeader = parseRequestHeader(request);
@@ -75,7 +75,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
                 }
 
                 mqtraceContext = buildMsgContext(ctx, requestHeader);
-                this.executeSendMessageHookBefore(ctx, request, mqtraceContext);
+                this.executeSendMessageHookBefore(ctx, request, mqtraceContext);  /* hook */
 
                 RemotingCommand response;
                 if (requestHeader.isBatch()) {
@@ -84,7 +84,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
                     response = this.sendMessage(ctx, request, mqtraceContext, requestHeader);
                 }
 
-                this.executeSendMessageHookAfter(response, mqtraceContext);
+                this.executeSendMessageHookAfter(response, mqtraceContext);  /* hook */
                 return response;
         }
     }
@@ -315,7 +315,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         }
 
         response.setCode(-1);
-        super.msgCheck(ctx, requestHeader, response);
+        super.msgCheck(ctx, requestHeader, response); /* 检查请求 */
         if (response.getCode() != -1) {
             return response;
         }
@@ -333,7 +333,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         msgInner.setTopic(requestHeader.getTopic());
         msgInner.setQueueId(queueIdInt);
 
-        if (!handleRetryAndDLQ(requestHeader, response, request, msgInner, topicConfig)) {
+        if (!handleRetryAndDLQ(requestHeader, response, request, msgInner, topicConfig)) { /* todo: 处理死信队列 */
             return response;
         }
 
@@ -358,10 +358,10 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
             }
             putMessageResult = this.brokerController.getTransactionalMessageService().prepareMessage(msgInner);
         } else {
-            putMessageResult = this.brokerController.getMessageStore().putMessage(msgInner);
+            putMessageResult = this.brokerController.getMessageStore().putMessage(msgInner); /* 消息存储 */
         }
 
-        return handlePutMessageResult(putMessageResult, response, request, msgInner, responseHeader, sendMessageContext, ctx, queueIdInt);
+        return handlePutMessageResult(putMessageResult, response, request, msgInner, responseHeader, sendMessageContext, ctx, queueIdInt); /* tcp响应 */
 
     }
 

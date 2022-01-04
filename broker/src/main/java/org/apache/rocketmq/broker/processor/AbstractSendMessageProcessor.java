@@ -159,16 +159,16 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
         return response;
     }
 
-    protected RemotingCommand msgCheck(final ChannelHandlerContext ctx,
+        protected RemotingCommand msgCheck(final ChannelHandlerContext ctx,
         final SendMessageRequestHeader requestHeader, final RemotingCommand response) {
-        if (!PermName.isWriteable(this.brokerController.getBrokerConfig().getBrokerPermission())
-            && this.brokerController.getTopicConfigManager().isOrderTopic(requestHeader.getTopic())) {
+        if (!PermName.isWriteable(this.brokerController.getBrokerConfig().getBrokerPermission()) /* broker不可写 报错*/
+            && this.brokerController.getTopicConfigManager().isOrderTopic(requestHeader.getTopic())) { /* topic顺序 报错 ??*/
             response.setCode(ResponseCode.NO_PERMISSION);
             response.setRemark("the broker[" + this.brokerController.getBrokerConfig().getBrokerIP1()
                 + "] sending message is forbidden");
             return response;
         }
-        if (!this.brokerController.getTopicConfigManager().isTopicCanSendMessage(requestHeader.getTopic())) {
+        if (!this.brokerController.getTopicConfigManager().isTopicCanSendMessage(requestHeader.getTopic())) { /* TWB是默认topic，只查询，不能发送消息到这里 */
             String errorMsg = "the topic[" + requestHeader.getTopic() + "] is conflict with system reserved words.";
             log.warn(errorMsg);
             response.setCode(ResponseCode.SYSTEM_ERROR);
@@ -189,7 +189,7 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
             }
 
             log.warn("the topic {} not exist, producer: {}", requestHeader.getTopic(), ctx.channel().remoteAddress());
-            topicConfig = this.brokerController.getTopicConfigManager().createTopicInSendMessageMethod(
+            topicConfig = this.brokerController.getTopicConfigManager().createTopicInSendMessageMethod( /* 入口： 创建topic */
                 requestHeader.getTopic(),
                 requestHeader.getDefaultTopic(),
                 RemotingHelper.parseChannelRemoteAddr(ctx.channel()),
@@ -214,7 +214,7 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
 
         int queueIdInt = requestHeader.getQueueId();
         int idValid = Math.max(topicConfig.getWriteQueueNums(), topicConfig.getReadQueueNums());
-        if (queueIdInt >= idValid) {
+        if (queueIdInt >= idValid) { /* 检查 queueid */
             String errorInfo = String.format("request queueId[%d] is illegal, %s Producer: %s",
                 queueIdInt,
                 topicConfig.toString(),

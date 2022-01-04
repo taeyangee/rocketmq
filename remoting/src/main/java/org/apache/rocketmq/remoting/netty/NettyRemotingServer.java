@@ -118,7 +118,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
         });
 
         if (useEpoll()) {
-            this.eventLoopGroupSelector = new EpollEventLoopGroup(nettyServerConfig.getServerSelectorThreads(), new ThreadFactory() {
+            this.eventLoopGroupSelector = new EpollEventLoopGroup(nettyServerConfig.getServerSelectorThreads(), new ThreadFactory() { /* ServerSelectorThreads = 3  */
                 private AtomicInteger threadIndex = new AtomicInteger(0);
                 private int threadTotal = nettyServerConfig.getServerSelectorThreads();
 
@@ -179,7 +179,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
             });
 
         ServerBootstrap childHandler =
-            this.serverBootstrap.group(this.eventLoopGroupBoss, this.eventLoopGroupSelector)
+            this.serverBootstrap.group(this.eventLoopGroupBoss, this.eventLoopGroupSelector) /* 前者accept， 后者网络IO（线程数：3）*/
                 .channel(useEpoll() ? EpollServerSocketChannel.class : NioServerSocketChannel.class)
                 .option(ChannelOption.SO_BACKLOG, 1024)
                 .option(ChannelOption.SO_REUSEADDR, true)
@@ -192,7 +192,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
                     @Override
                     public void initChannel(SocketChannel ch) throws Exception {
                         ch.pipeline()
-                            .addLast(defaultEventExecutorGroup, HANDSHAKE_HANDLER_NAME,
+                            .addLast(defaultEventExecutorGroup, HANDSHAKE_HANDLER_NAME, /* 业务线程： defaultEventExecutorGroup， 线程数：8 */
                                 new HandshakeHandler(TlsSystemConfig.tlsMode))
                             .addLast(defaultEventExecutorGroup,
                                 new NettyEncoder(),

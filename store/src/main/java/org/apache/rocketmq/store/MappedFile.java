@@ -40,8 +40,8 @@ import org.apache.rocketmq.common.message.MessageExtBatch;
 import org.apache.rocketmq.store.config.FlushDiskType;
 import org.apache.rocketmq.store.util.LibC;
 import sun.nio.ch.DirectBuffer;
-
-public class MappedFile extends ReferenceResource {
+/* [fileFromOffset *committedPosition  *wrotePosition *flushedPosition  fileFromOffset+fileSize]*/
+public class MappedFile extends ReferenceResource { /* 指针图解 https://blog.51cto.com/u_15310381/3228885 */ /* ReferenceResource用于引用计数 */
     public static final int OS_PAGE_SIZE = 1024 * 4;
     protected static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
 
@@ -58,12 +58,12 @@ public class MappedFile extends ReferenceResource {
      * Message will put to here first, and then reput to FileChannel if writeBuffer is not null.
      */
     protected ByteBuffer writeBuffer = null;
-    protected TransientStorePool transientStorePool = null;
+    protected TransientStorePool transientStorePool = null; /* writeBuffer 从这里借出来的 */
     private String fileName;
-    private long fileFromOffset;
-    private File file;
+    private long fileFromOffset; /* 物理起始偏移 */
+    private File file; /* 文件 */
     private MappedByteBuffer mappedByteBuffer;
-    private volatile long storeTimestamp = 0;
+    private volatile long storeTimestamp = 0; /* 最近的写入时间戳 */
     private boolean firstCreateInQueue = false;
 
     public MappedFile() {
@@ -161,7 +161,7 @@ public class MappedFile extends ReferenceResource {
 
         try {
             this.fileChannel = new RandomAccessFile(this.file, "rw").getChannel();
-            this.mappedByteBuffer = this.fileChannel.map(MapMode.READ_WRITE, 0, fileSize);
+            this.mappedByteBuffer = this.fileChannel.map(MapMode.READ_WRITE, 0, fileSize); /* mmap 内存映射 */
             TOTAL_MAPPED_VIRTUAL_MEMORY.addAndGet(fileSize);
             TOTAL_MAPPED_FILES.incrementAndGet();
             ok = true;
@@ -205,10 +205,10 @@ public class MappedFile extends ReferenceResource {
         int currentPos = this.wrotePosition.get();
 
         if (currentPos < this.fileSize) {
-            ByteBuffer byteBuffer = writeBuffer != null ? writeBuffer.slice() : this.mappedByteBuffer.slice();
+            ByteBuffer byteBuffer = writeBuffer != null ? writeBuffer.slice() : this.mappedByteBuffer.slice(); /* 挑一个ByteBuffer写入 */
             byteBuffer.position(currentPos);
             AppendMessageResult result = null;
-            if (messageExt instanceof MessageExtBrokerInner) {
+            if (messageExt instanceof MessageExtBrokerInner) { /* 真正的写入动作：是cb完成的，由各个功能文件自己实现 */
                 result = cb.doAppend(this.getFileFromOffset(), byteBuffer, this.fileSize - currentPos, (MessageExtBrokerInner) messageExt);
             } else if (messageExt instanceof MessageExtBatch) {
                 result = cb.doAppend(this.getFileFromOffset(), byteBuffer, this.fileSize - currentPos, (MessageExtBatch) messageExt);
@@ -325,7 +325,7 @@ public class MappedFile extends ReferenceResource {
 
         if (writePos - this.committedPosition.get() > 0) {
             try {
-                ByteBuffer byteBuffer = writeBuffer.slice();
+                ByteBuffer byteBuffer = writeBuffer.slice(); /* 只有异步刷盘：才有“commit”这个动作 */
                 byteBuffer.position(lastCommittedPosition);
                 byteBuffer.limit(writePos);
                 this.fileChannel.position(lastCommittedPosition);

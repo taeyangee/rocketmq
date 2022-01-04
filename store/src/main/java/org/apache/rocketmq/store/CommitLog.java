@@ -48,11 +48,11 @@ public class CommitLog {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
     // End of file empty MAGIC CODE cbd43194
     private final static int BLANK_MAGIC_CODE = -875286124;
-    private final MappedFileQueue mappedFileQueue;
+    private final MappedFileQueue mappedFileQueue; /* 底层文件 */
     private final DefaultMessageStore defaultMessageStore;
-    private final FlushCommitLogService flushCommitLogService;
+    private final FlushCommitLogService flushCommitLogService; /* commit log 刷盘服务 */
 
-    //If TransientStorePool enabled, we must flush message to FileChannel at fixed periods
+    //If TransientStorePool enabled, we must flush message to FileChannel at fixed periods  定时将TransientStorePool中的直接内存 ByteBuffer，提交条内存映射 MappedByteBuffer 中
     private final FlushCommitLogService commitLogService;
 
     private final AppendMessageCallback appendMessageCallback;
@@ -61,11 +61,11 @@ public class CommitLog {
     private volatile long confirmOffset = -1L;
 
     private volatile long beginTimeInLock = 0;
-    private final PutMessageLock putMessageLock;
+    private final PutMessageLock putMessageLock; /* spin lock or reentry lock */
 
     public CommitLog(final DefaultMessageStore defaultMessageStore) {
-        this.mappedFileQueue = new MappedFileQueue(defaultMessageStore.getMessageStoreConfig().getStorePathCommitLog(),
-            defaultMessageStore.getMessageStoreConfig().getMapedFileSizeCommitLog(), defaultMessageStore.getAllocateMappedFileService());
+        this.mappedFileQueue = new MappedFileQueue(defaultMessageStore.getMessageStoreConfig().getStorePathCommitLog(), /* /data/rocketmq/data/master/store/commitlog/ */
+            defaultMessageStore.getMessageStoreConfig().getMapedFileSizeCommitLog() /* 默认1G*/, defaultMessageStore.getAllocateMappedFileService());
         this.defaultMessageStore = defaultMessageStore;
 
         if (FlushDiskType.SYNC_FLUSH == defaultMessageStore.getMessageStoreConfig().getFlushDiskType()) {
@@ -87,13 +87,13 @@ public class CommitLog {
 
     }
 
-    public boolean load() {
+    public boolean load() {     /* 加载（暖机）*/
         boolean result = this.mappedFileQueue.load();
         log.info("load commit log " + (result ? "OK" : "Failed"));
         return result;
     }
 
-    public void start() {
+    public void start() {/* 启动 */
         this.flushCommitLogService.start();
 
         if (defaultMessageStore.getMessageStoreConfig().isTransientStorePoolEnable()) {
@@ -101,7 +101,7 @@ public class CommitLog {
         }
     }
 
-    public void shutdown() {
+    public void shutdown() { /* 关闭 */
         if (defaultMessageStore.getMessageStoreConfig().isTransientStorePoolEnable()) {
             this.commitLogService.shutdown();
         }
@@ -109,9 +109,9 @@ public class CommitLog {
         this.flushCommitLogService.shutdown();
     }
 
-    public long flush() {
-        this.mappedFileQueue.commit(0);
-        this.mappedFileQueue.flush(0);
+    public long flush() { /* mapfile刷盘 */
+        this.mappedFileQueue.commit(0); /* 提交 */
+        this.mappedFileQueue.flush(0); /* 刷盘 */
         return this.mappedFileQueue.getFlushedWhere();
     }
 
@@ -139,7 +139,7 @@ public class CommitLog {
     /**
      * Read CommitLog data, use data replication
      */
-    public SelectMappedBufferResult getData(final long offset) {
+    public SelectMappedBufferResult getData(final long offset) { /* commitlog的内存视图 */
         return this.getData(offset, offset == 0);
     }
 
@@ -563,7 +563,7 @@ public class CommitLog {
 
         long eclipseTimeInLock = 0;
         MappedFile unlockMappedFile = null;
-        MappedFile mappedFile = this.mappedFileQueue.getLastMappedFile();
+        MappedFile mappedFile = this.mappedFileQueue.getLastMappedFile(); /* 获取一个mappedFile */
 
         putMessageLock.lock(); //spin or ReentrantLock ,depending on store config
         try {
@@ -575,7 +575,7 @@ public class CommitLog {
             msg.setStoreTimestamp(beginLockTimestamp);
 
             if (null == mappedFile || mappedFile.isFull()) {
-                mappedFile = this.mappedFileQueue.getLastMappedFile(0); // Mark: NewFile may be cause noise
+                mappedFile = this.mappedFileQueue.getLastMappedFile(0); // Mark: NewFile may be cause noise 一个新的MappedFile
             }
             if (null == mappedFile) {
                 log.error("create mapped file1 error, topic: " + msg.getTopic() + " clientAddr: " + msg.getBornHostString());
@@ -583,7 +583,7 @@ public class CommitLog {
                 return new PutMessageResult(PutMessageStatus.CREATE_MAPEDFILE_FAILED, null);
             }
 
-            result = mappedFile.appendMessage(msg, this.appendMessageCallback);
+            result = mappedFile.appendMessage(msg, this.appendMessageCallback); /* 顺序写入 */
             switch (result.getStatus()) {
                 case PUT_OK:
                     break;
@@ -631,8 +631,8 @@ public class CommitLog {
         storeStatsService.getSinglePutMessageTopicTimesTotal(msg.getTopic()).incrementAndGet();
         storeStatsService.getSinglePutMessageTopicSizeTotal(topic).addAndGet(result.getWroteBytes());
 
-        handleDiskFlush(result, putMessageResult, msg);
-        handleHA(result, putMessageResult, msg);
+        handleDiskFlush(result, putMessageResult, msg); /* msg刷盘 */
+        handleHA(result, putMessageResult, msg); /* msg M-S间同步 */
 
         return putMessageResult;
     }
@@ -641,7 +641,7 @@ public class CommitLog {
         // Synchronization flush
         if (FlushDiskType.SYNC_FLUSH == this.defaultMessageStore.getMessageStoreConfig().getFlushDiskType()) {
             final GroupCommitService service = (GroupCommitService) this.flushCommitLogService;
-            if (messageExt.isWaitStoreMsgOK()) {
+            if (messageExt.isWaitStoreMsgOK()) { /* 如果msg要求等待落盘 */
                 GroupCommitRequest request = new GroupCommitRequest(result.getWroteOffset() + result.getWroteBytes());
                 service.putRequest(request);
                 boolean flushOK = request.waitForFlush(this.defaultMessageStore.getMessageStoreConfig().getSyncFlushTimeout());
@@ -1189,7 +1189,7 @@ public class CommitLog {
 
             // PHY OFFSET
             long wroteOffset = fileFromOffset + byteBuffer.position();
-
+            /* msg的host写入hostHolder */
             this.resetByteBuffer(hostHolder, 8);
             String msgId = MessageDecoder.createMessageId(this.msgIdMemory, msgInner.getStoreHostBytes(hostHolder), wroteOffset);
 
@@ -1202,7 +1202,7 @@ public class CommitLog {
             Long queueOffset = CommitLog.this.topicQueueTable.get(key);
             if (null == queueOffset) {
                 queueOffset = 0L;
-                CommitLog.this.topicQueueTable.put(key, queueOffset);
+                CommitLog.this.topicQueueTable.put(key, queueOffset); /* */
             }
 
             // Transaction messages that require special handling
@@ -1238,17 +1238,17 @@ public class CommitLog {
 
             final int bodyLength = msgInner.getBody() == null ? 0 : msgInner.getBody().length;
 
-            final int msgLen = calMsgLength(bodyLength, topicLength, propertiesLength);
+            final int msgLen = calMsgLength(bodyLength, topicLength, propertiesLength); /* msg总长 = topic name + properties + body */
 
             // Exceeds the maximum message
-            if (msgLen > this.maxMessageSize) {
+            if (msgLen > this.maxMessageSize) { /* msgLen长度校验 */
                 CommitLog.log.warn("message size exceeded, msg total size: " + msgLen + ", msg body size: " + bodyLength
                     + ", maxMessageSize: " + this.maxMessageSize);
                 return new AppendMessageResult(AppendMessageStatus.MESSAGE_SIZE_EXCEEDED);
             }
 
             // Determines whether there is sufficient free space
-            if ((msgLen + END_FILE_MIN_BLANK_LENGTH) > maxBlank) {
+            if ((msgLen + END_FILE_MIN_BLANK_LENGTH) > maxBlank) {  /*   */
                 this.resetByteBuffer(this.msgStoreItemMemory, maxBlank);
                 // 1 TOTALSIZE
                 this.msgStoreItemMemory.putInt(maxBlank);

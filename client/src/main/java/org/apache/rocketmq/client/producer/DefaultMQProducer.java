@@ -56,12 +56,12 @@ import org.apache.rocketmq.remoting.netty.NettyRemotingClient;
  */
 public class DefaultMQProducer extends ClientConfig implements MQProducer {
 
-    /**
+    /** 为什么要整一个Impl
      * Wrapping internal implementations for virtually all methods presented in this class.
      */
     protected final transient DefaultMQProducerImpl defaultMQProducerImpl;
 
-    /**
+    /** Producer group主要用于事务： 如果需要Producer重发，那么同一个producer group中的任一producer都可以代为重发
      * Producer group conceptually aggregates all producer instances of exactly same role, which is particularly
      * important when transactional messages are involved.
      * </p>
@@ -88,12 +88,12 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
      */
     private int sendMsgTimeout = 3000;
 
-    /**
+    /**msg压缩门限
      * Compress message body threshold, namely, message body larger than 4k will be compressed on default.
      */
     private int compressMsgBodyOverHowmuch = 1024 * 4;
 
-    /**
+    /** 重试次数
      * Maximum number of retry to perform internally before claiming sending failure in synchronous mode.
      * </p>
      *
@@ -101,7 +101,7 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
      */
     private int retryTimesWhenSendFailed = 2;
 
-    /**
+    /** 异步重试次数
      * Maximum number of retry to perform internally before claiming sending failure in asynchronous mode.
      * </p>
      *
@@ -494,6 +494,7 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
      *
      * @param key accesskey
      * @param newTopic topic name
+     *
      * @param queueNum topic's queue number
      * @throws MQClientException if there is any client error.
      */
@@ -624,7 +625,7 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
     @Override
     public SendResult send(
         Collection<Message> msgs) throws MQClientException, RemotingException, MQBrokerException, InterruptedException {
-        return this.defaultMQProducerImpl.send(batch(msgs));
+        return this.defaultMQProducerImpl.send(batch(msgs)); /* batch & 发送*/
     }
 
     @Override

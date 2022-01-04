@@ -18,7 +18,7 @@ package org.apache.rocketmq.store;
 
 import java.util.Map;
 
-public class DispatchRequest {
+public class DispatchRequest { /* 文件间的分发请求 */
     private final String topic;
     private final int queueId;
     private final long commitLogOffset;

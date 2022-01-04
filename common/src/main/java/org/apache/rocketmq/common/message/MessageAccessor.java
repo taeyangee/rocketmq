@@ -19,7 +19,7 @@ package org.apache.rocketmq.common.message;
 
 import java.util.Map;
 
-public class MessageAccessor {
+public class MessageAccessor { /* 类似 Message Visitor, 提取了对Message的操作 */
 
     public static void clearProperty(final Message msg, final String name) {
         msg.clearProperty(name);

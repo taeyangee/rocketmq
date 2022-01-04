@@ -42,14 +42,14 @@ import org.apache.rocketmq.srvutil.FileWatchService;
 public class NamesrvController {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.NAMESRV_LOGGER_NAME);
 
-    private final NamesrvConfig namesrvConfig;
+    private final NamesrvConfig namesrvConfig; /* namesrv 配置:业务相关*/
 
-    private final NettyServerConfig nettyServerConfig;
+    private final NettyServerConfig nettyServerConfig; /* namesrv 配置： 网络相关 */
 
     private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryImpl(
         "NSScheduledThread"));
     private final KVConfigManager kvConfigManager;
-    private final RouteInfoManager routeInfoManager;
+    private final RouteInfoManager routeInfoManager; /* 关键：路由信息管理 */
 
     private RemotingServer remotingServer;
 
@@ -77,12 +77,12 @@ public class NamesrvController {
 
         this.kvConfigManager.load();
 
-        this.remotingServer = new NettyRemotingServer(this.nettyServerConfig, this.brokerHousekeepingService);
+        this.remotingServer = new NettyRemotingServer(this.nettyServerConfig, this.brokerHousekeepingService); /* netty server */
 
         this.remotingExecutor =
             Executors.newFixedThreadPool(nettyServerConfig.getServerWorkerThreads(), new ThreadFactoryImpl("RemotingExecutorThread_"));
 
-        this.registerProcessor();
+        this.registerProcessor(); /* 注册 请求响应Processor 到 netty */
 
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
@@ -90,7 +90,7 @@ public class NamesrvController {
             public void run() {
                 NamesrvController.this.routeInfoManager.scanNotActiveBroker();
             }
-        }, 5, 10, TimeUnit.SECONDS);
+        }, 5, 10, TimeUnit.SECONDS); /* 周期10s， 检测Broker是否存活 */
 
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
@@ -98,12 +98,12 @@ public class NamesrvController {
             public void run() {
                 NamesrvController.this.kvConfigManager.printAllPeriodically();
             }
-        }, 1, 10, TimeUnit.MINUTES);
+        }, 1, 10, TimeUnit.MINUTES); /* 周期10min 打印一下配置 */
 
         if (TlsSystemConfig.tlsMode != TlsMode.DISABLED) {
             // Register a listener to reload SslContext
             try {
-                fileWatchService = new FileWatchService(
+                fileWatchService = new FileWatchService(  /* tls证书文件监听 */
                     new String[] {
                         TlsSystemConfig.tlsServerCertPath,
                         TlsSystemConfig.tlsServerKeyPath,
@@ -161,12 +161,12 @@ public class NamesrvController {
     }
 
     public void shutdown() {
-        this.remotingServer.shutdown();
-        this.remotingExecutor.shutdown();
-        this.scheduledExecutorService.shutdown();
+        this.remotingServer.shutdown(); /* 关闭网络 */
+        this.remotingExecutor.shutdown(); /* 关闭网络处理 */
+        this.scheduledExecutorService.shutdown(); /* 关闭线程池：心跳检测、kv打印*/
 
         if (this.fileWatchService != null) {
-            this.fileWatchService.shutdown();
+            this.fileWatchService.shutdown(); /* 关闭文件监听 */
         }
     }
 

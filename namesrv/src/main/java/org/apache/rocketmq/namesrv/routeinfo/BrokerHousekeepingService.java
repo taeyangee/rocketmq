@@ -23,7 +23,7 @@ import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.namesrv.NamesrvController;
 import org.apache.rocketmq.remoting.ChannelEventListener;
 
-public class BrokerHousekeepingService implements ChannelEventListener {
+public class BrokerHousekeepingService implements ChannelEventListener { /* 监听器： 触发RouteInfoManager */
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.NAMESRV_LOGGER_NAME);
     private final NamesrvController namesrvController;
 

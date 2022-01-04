@@ -487,7 +487,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
         this.defaultMQPushConsumerImpl.sendMessageBack(msg, delayLevel, null);
     }
 
-    /**
+    /** 场景： consumer 消费不了数据，退货给broker
      * Send message back to the broker whose name is <code>brokerName</code> and the message will be re-delivered in
      * future.
      *

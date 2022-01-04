@@ -65,27 +65,27 @@ public class DefaultMessageStore implements MessageStore {
 
     private final MessageStoreConfig messageStoreConfig;
     // CommitLog
-    private final CommitLog commitLog;
+    private final CommitLog commitLog; /* 服务日志 */
 
     private final ConcurrentMap<String/* topic */, ConcurrentMap<Integer/* queueId */, ConsumeQueue>> consumeQueueTable;
 
-    private final FlushConsumeQueueService flushConsumeQueueService;
+    private final FlushConsumeQueueService flushConsumeQueueService; /* ConsumeQueue刷盘服务*/
 
-    private final CleanCommitLogService cleanCommitLogService;
+    private final CleanCommitLogService cleanCommitLogService; /* commitLog清理服务 */
 
-    private final CleanConsumeQueueService cleanConsumeQueueService;
+    private final CleanConsumeQueueService cleanConsumeQueueService; /* ConsumeQueue清理服务 */
 
-    private final IndexService indexService;
+    private final IndexService indexService; /* 快速查询服务 */
 
-    private final AllocateMappedFileService allocateMappedFileService;
+    private final AllocateMappedFileService allocateMappedFileService; /* mappedFile分配器*/
 
-    private final ReputMessageService reputMessageService;
+    private final ReputMessageService reputMessageService; /* consumer queue 和 index的更新服务 */
 
     private final HAService haService;
 
     private final ScheduleMessageService scheduleMessageService;
 
-    private final StoreStatsService storeStatsService;
+    private final StoreStatsService storeStatsService; /* store的metric管理 */
 
     private final TransientStorePool transientStorePool;
 
@@ -144,10 +144,10 @@ public class DefaultMessageStore implements MessageStore {
         this.indexService.start();
 
         this.dispatcherList = new LinkedList<>();
-        this.dispatcherList.addLast(new CommitLogDispatcherBuildConsumeQueue());
-        this.dispatcherList.addLast(new CommitLogDispatcherBuildIndex());
+        this.dispatcherList.addLast(new CommitLogDispatcherBuildConsumeQueue()); /* commitlog 的 consumerqueue构建 */
+        this.dispatcherList.addLast(new CommitLogDispatcherBuildIndex()); /* commitlog的index构建 */
 
-        File file = new File(StorePathConfigHelper.getLockFile(messageStoreConfig.getStorePathRootDir()));
+        File file = new File(StorePathConfigHelper.getLockFile(messageStoreConfig.getStorePathRootDir())); /* 文件锁？ */
         MappedFile.ensureDirOK(file.getParent());
         lockFile = new RandomAccessFile(file, "rw");
     }
@@ -303,12 +303,12 @@ public class DefaultMessageStore implements MessageStore {
     }
 
     public PutMessageResult putMessage(MessageExtBrokerInner msg) {
-        if (this.shutdown) {
+        if (this.shutdown) { /* 关闭中， 无法写入 */
             log.warn("message store has shutdown, so putMessage is forbidden");
             return new PutMessageResult(PutMessageStatus.SERVICE_NOT_AVAILABLE, null);
         }
 
-        if (BrokerRole.SLAVE == this.messageStoreConfig.getBrokerRole()) {
+        if (BrokerRole.SLAVE == this.messageStoreConfig.getBrokerRole()) { /* slave 无法写入 */
             long value = this.printTimes.getAndIncrement();
             if ((value % 50000) == 0) {
                 log.warn("message store is slave mode, so putMessage is forbidden ");
@@ -328,7 +328,7 @@ public class DefaultMessageStore implements MessageStore {
             this.printTimes.set(0);
         }
 
-        if (msg.getTopic().length() > Byte.MAX_VALUE) {
+        if (msg.getTopic().length() > Byte.MAX_VALUE) { /* topic name 太长，无法写入 */
             log.warn("putMessage message topic length too long " + msg.getTopic().length());
             return new PutMessageResult(PutMessageStatus.MESSAGE_ILLEGAL, null);
         }
@@ -338,12 +338,12 @@ public class DefaultMessageStore implements MessageStore {
             return new PutMessageResult(PutMessageStatus.PROPERTIES_SIZE_EXCEEDED, null);
         }
 
-        if (this.isOSPageCacheBusy()) {
+        if (this.isOSPageCacheBusy()) { /* Check if the operation system page cache is busy */
             return new PutMessageResult(PutMessageStatus.OS_PAGECACHE_BUSY, null);
         }
 
         long beginTime = this.getSystemClock().now();
-        PutMessageResult result = this.commitLog.putMessage(msg);
+        PutMessageResult result = this.commitLog.putMessage(msg); /* 关键：写commit log*/
 
         long eclipseTime = this.getSystemClock().now() - beginTime;
         if (eclipseTime > 500) {
@@ -1372,7 +1372,7 @@ public class DefaultMessageStore implements MessageStore {
         }
     }
 
-    public void putMessagePositionInfo(DispatchRequest dispatchRequest) {
+    public void putMessagePositionInfo(DispatchRequest dispatchRequest) { /* 写msg的位置信息： consumer queue*/
         ConsumeQueue cq = this.findConsumeQueue(dispatchRequest.getTopic(), dispatchRequest.getQueueId());
         cq.putMessagePositionInfoWrapper(dispatchRequest);
     }
@@ -1767,17 +1767,17 @@ public class DefaultMessageStore implements MessageStore {
 
                             if (dispatchRequest.isSuccess()) {
                                 if (size > 0) {
-                                    DefaultMessageStore.this.doDispatch(dispatchRequest);
+                                    DefaultMessageStore.this.doDispatch(dispatchRequest); /* 写consumer queue 和 index */
 
                                     if (BrokerRole.SLAVE != DefaultMessageStore.this.getMessageStoreConfig().getBrokerRole()
                                         && DefaultMessageStore.this.brokerConfig.isLongPollingEnable()) {
                                         DefaultMessageStore.this.messageArrivingListener.arriving(dispatchRequest.getTopic(),
                                             dispatchRequest.getQueueId(), dispatchRequest.getConsumeQueueOffset() + 1,
                                             dispatchRequest.getTagsCode(), dispatchRequest.getStoreTimestamp(),
-                                            dispatchRequest.getBitMap(), dispatchRequest.getPropertiesMap());
+                                            dispatchRequest.getBitMap(), dispatchRequest.getPropertiesMap()); /* 猜：和consumer的消息拉取有㽑 */
                                     }
 
-                                    this.reputFromOffset += size;
+                                    this.reputFromOffset += size; /* 读取下一条消息 */
                                     readSize += size;
                                     if (DefaultMessageStore.this.getMessageStoreConfig().getBrokerRole() == BrokerRole.SLAVE) {
                                         DefaultMessageStore.this.storeStatsService
@@ -1787,7 +1787,7 @@ public class DefaultMessageStore implements MessageStore {
                                             .addAndGet(dispatchRequest.getMsgSize());
                                     }
                                 } else if (size == 0) {
-                                    this.reputFromOffset = DefaultMessageStore.this.commitLog.rollNextFile(this.reputFromOffset);
+                                    this.reputFromOffset = DefaultMessageStore.this.commitLog.rollNextFile(this.reputFromOffset); /* 滚动到下一个文件 */
                                     readSize = result.getSize();
                                 }
                             } else if (!dispatchRequest.isSuccess()) {

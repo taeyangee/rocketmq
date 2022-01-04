@@ -29,7 +29,7 @@ public class MQClientManager {
     private final static InternalLogger log = ClientLogger.getLog();
     private static MQClientManager instance = new MQClientManager();
     private AtomicInteger factoryIndexGenerator = new AtomicInteger();
-    private ConcurrentMap<String/* clientId */, MQClientInstance> factoryTable =
+    private ConcurrentMap<String/* clientId： {ip}@@{进程pid} */, MQClientInstance> factoryTable =
         new ConcurrentHashMap<String, MQClientInstance>();
 
     private MQClientManager() {
@@ -45,7 +45,7 @@ public class MQClientManager {
     }
 
     public MQClientInstance getAndCreateMQClientInstance(final ClientConfig clientConfig, RPCHook rpcHook) {
-        String clientId = clientConfig.buildMQClientId();
+        String clientId = clientConfig.buildMQClientId(); /* {ip}@@{进程pid} */
         MQClientInstance instance = this.factoryTable.get(clientId);
         if (null == instance) {
             instance =

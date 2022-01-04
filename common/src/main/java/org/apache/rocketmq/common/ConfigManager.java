@@ -26,7 +26,7 @@ public abstract class ConfigManager {
 
     public abstract String encode();
 
-    public boolean load() {
+    public boolean load() { /* 有个load bak机制 */
         String fileName = null;
         try {
             fileName = this.configFilePath();

@@ -57,7 +57,7 @@ import org.apache.rocketmq.remoting.exception.RemotingCommandException;
 import org.apache.rocketmq.remoting.netty.NettyRequestProcessor;
 import org.apache.rocketmq.remoting.protocol.RemotingCommand;
 
-public class DefaultRequestProcessor implements NettyRequestProcessor {
+public class DefaultRequestProcessor implements NettyRequestProcessor { /* netty请求处理*/
     private static InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.NAMESRV_LOGGER_NAME);
 
     protected final NamesrvController namesrvController;
@@ -87,16 +87,16 @@ public class DefaultRequestProcessor implements NettyRequestProcessor {
                 return this.deleteKVConfig(ctx, request);
             case RequestCode.QUERY_DATA_VERSION:
                 return queryBrokerTopicConfig(ctx, request);
-            case RequestCode.REGISTER_BROKER:
+            case RequestCode.REGISTER_BROKER: /* 处理：broker注册 */
                 Version brokerVersion = MQVersion.value2Version(request.getVersion());
                 if (brokerVersion.ordinal() >= MQVersion.Version.V3_0_11.ordinal()) {
                     return this.registerBrokerWithFilterServer(ctx, request);
                 } else {
                     return this.registerBroker(ctx, request);
                 }
-            case RequestCode.UNREGISTER_BROKER:
+            case RequestCode.UNREGISTER_BROKER: /* 处理：broker注销*/
                 return this.unregisterBroker(ctx, request);
-            case RequestCode.GET_ROUTEINTO_BY_TOPIC:
+            case RequestCode.GET_ROUTEINTO_BY_TOPIC:/* 处理： client拉取topic路由消息 */
                 return this.getRouteInfoByTopic(ctx, request);
             case RequestCode.GET_BROKER_CLUSTER_INFO:
                 return this.getBrokerClusterInfo(ctx, request);

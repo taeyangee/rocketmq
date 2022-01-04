@@ -28,23 +28,23 @@ import org.apache.rocketmq.common.UtilAll;
 import org.apache.rocketmq.common.constant.LoggerName;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
-
-public class MappedFileQueue {
+/* file1 *commit  file1  *flush file2, file3 */
+public class MappedFileQueue { /* mappedFiles的管理对象：*/
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
     private static final InternalLogger LOG_ERROR = InternalLoggerFactory.getLogger(LoggerName.STORE_ERROR_LOGGER_NAME);
 
     private static final int DELETE_FILES_BATCH_MAX = 10;
 
-    private final String storePath;
+    private final String storePath; /* 文件存储路径 */
 
-    private final int mappedFileSize;
+    private final int mappedFileSize; /* mapefile文件大小：比如commitlog 1G*/
 
-    private final CopyOnWriteArrayList<MappedFile> mappedFiles = new CopyOnWriteArrayList<MappedFile>();
+    private final CopyOnWriteArrayList<MappedFile> mappedFiles = new CopyOnWriteArrayList<MappedFile>(); /* mappedfile文件集合 */
 
-    private final AllocateMappedFileService allocateMappedFileService;
+    private final AllocateMappedFileService allocateMappedFileService; /* MappedFile内存开辟服务（有预加载机制）： https://www.jianshu.com/p/010c6825eae3 */
 
-    private long flushedWhere = 0;
-    private long committedWhere = 0;
+    private long flushedWhere = 0; /* 指针： 刷盘*/
+    private long committedWhere = 0; /* 指针： 提交*/
 
     private volatile long storeTimestamp = 0;
 
@@ -64,7 +64,7 @@ public class MappedFileQueue {
                 MappedFile cur = iterator.next();
 
                 if (pre != null) {
-                    if (cur.getFileFromOffset() - pre.getFileFromOffset() != this.mappedFileSize) {
+                    if (cur.getFileFromOffset() - pre.getFileFromOffset() != this.mappedFileSize) { /* 自检：排除掉受损文件 */
                         LOG_ERROR.error("[BUG]The mappedFile queue's data is damaged, the adjacent mappedFile's offset don't match. pre file {}, cur file {}",
                             pre.getFileName(), cur.getFileName());
                     }
@@ -75,7 +75,7 @@ public class MappedFileQueue {
     }
 
     public MappedFile getMappedFileByTime(final long timestamp) {
-        Object[] mfs = this.copyMappedFiles(0);
+        Object[] mfs = this.copyMappedFiles(0); /* mf队列转数组 */
 
         if (null == mfs)
             return null;

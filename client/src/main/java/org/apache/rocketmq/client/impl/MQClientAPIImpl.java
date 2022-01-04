@@ -314,7 +314,7 @@ public class MQClientAPIImpl {
             SendMessageRequestHeaderV2 requestHeaderV2 = SendMessageRequestHeaderV2.createSendMessageRequestHeaderV2(requestHeader);
             request = RemotingCommand.createRequestCommand(msg instanceof MessageBatch ? RequestCode.SEND_BATCH_MESSAGE : RequestCode.SEND_MESSAGE_V2, requestHeaderV2);
         } else {
-            request = RemotingCommand.createRequestCommand(RequestCode.SEND_MESSAGE, requestHeader);
+            request = RemotingCommand.createRequestCommand(RequestCode.SEND_MESSAGE, requestHeader); /* 消息头：单消息发送*/
         }
 
         request.setBody(msg.getBody());
@@ -379,7 +379,7 @@ public class MQClientAPIImpl {
                 if (null == sendCallback && response != null) {
 
                     try {
-                        SendResult sendResult = MQClientAPIImpl.this.processSendResponse(brokerName, msg, response);
+                        SendResult sendResult = MQClientAPIImpl.this.processSendResponse(brokerName, msg, response); /* 可能抛出异常 */
                         if (context != null && sendResult != null) {
                             context.setSendResult(sendResult);
                             context.getProducer().executeSendMessageHookAfter(context);
@@ -393,7 +393,7 @@ public class MQClientAPIImpl {
 
                 if (response != null) {
                     try {
-                        SendResult sendResult = MQClientAPIImpl.this.processSendResponse(brokerName, msg, response);
+                        SendResult sendResult = MQClientAPIImpl.this.processSendResponse(brokerName, msg, response); /* 可能抛出异常 */
                         assert sendResult != null;
                         if (context != null) {
                             context.setSendResult(sendResult);
@@ -409,7 +409,7 @@ public class MQClientAPIImpl {
                     } catch (Exception e) {
                         producer.updateFaultItem(brokerName, System.currentTimeMillis() - responseFuture.getBeginTimestamp(), true);
                         onExceptionImpl(brokerName, msg, 0L, request, sendCallback, topicPublishInfo, instance,
-                            retryTimesWhenSendFailed, times, e, context, false, producer);
+                            retryTimesWhenSendFailed, times, e, context, false, producer); /* onExceptionImpl 在同一个broker上重试 */
                     }
                 } else {
                     producer.updateFaultItem(brokerName, System.currentTimeMillis() - responseFuture.getBeginTimestamp(), true);
@@ -1209,7 +1209,7 @@ public class MQClientAPIImpl {
 
         RemotingCommand request = RemotingCommand.createRequestCommand(RequestCode.GET_ROUTEINTO_BY_TOPIC, requestHeader);
 
-        RemotingCommand response = this.remotingClient.invokeSync(null, request, timeoutMillis);
+        RemotingCommand response = this.remotingClient.invokeSync(null, request, timeoutMillis); /* addr = null， 会先任一namesrv建连 */
         assert response != null;
         switch (response.getCode()) {
             case ResponseCode.TOPIC_NOT_EXIST: {

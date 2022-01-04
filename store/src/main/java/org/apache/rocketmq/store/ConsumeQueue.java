@@ -482,7 +482,7 @@ public class ConsumeQueue {
         }
     }
 
-    public SelectMappedBufferResult getIndexBuffer(final long startIndex) {
+    public SelectMappedBufferResult getIndexBuffer(final long startIndex) { /* startIndex 逻辑偏移 */
         int mappedFileSize = this.mappedFileSize;
         long offset = startIndex * CQ_STORE_UNIT_SIZE;
         if (offset >= this.getMinLogicOffset()) {

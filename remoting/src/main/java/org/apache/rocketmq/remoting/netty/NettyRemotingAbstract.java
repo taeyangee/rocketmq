@@ -114,6 +114,7 @@ public abstract class NettyRemotingAbstract {
      * Custom channel event listener.
      *
      * @return custom channel event listener if defined; null otherwise.
+     *
      */
     public abstract ChannelEventListener getChannelEventListener();
 
@@ -405,7 +406,7 @@ public abstract class NettyRemotingAbstract {
         throws InterruptedException, RemotingTooMuchRequestException, RemotingTimeoutException, RemotingSendRequestException {
         long beginStartTime = System.currentTimeMillis();
         final int opaque = request.getOpaque();
-        boolean acquired = this.semaphoreAsync.tryAcquire(timeoutMillis, TimeUnit.MILLISECONDS);
+        boolean acquired = this.semaphoreAsync.tryAcquire(timeoutMillis, TimeUnit.MILLISECONDS); /* client async请求并发限流 */
         if (acquired) {
             final SemaphoreReleaseOnlyOnce once = new SemaphoreReleaseOnlyOnce(this.semaphoreAsync);
             long costTime = System.currentTimeMillis() - beginStartTime;

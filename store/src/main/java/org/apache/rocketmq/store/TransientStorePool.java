@@ -44,7 +44,7 @@ public class TransientStorePool {
     }
 
     /**
-     * It's a heavy init method.
+     * It's a heavy init method. 连续开了poolSize块fileSize大小的buffer，同时加了内存锁，不会swap换到硬盘
      */
     public void init() {
         for (int i = 0; i < poolSize; i++) {

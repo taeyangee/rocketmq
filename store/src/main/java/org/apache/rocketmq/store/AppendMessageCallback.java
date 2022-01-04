@@ -29,8 +29,8 @@ public interface AppendMessageCallback {
      *
      * @return How many bytes to write
      */
-    AppendMessageResult doAppend(final long fileFromOffset, final ByteBuffer byteBuffer,
-        final int maxBlank, final MessageExtBrokerInner msg);
+    AppendMessageResult doAppend(final long fileFromOffset, final ByteBuffer byteBuffer /* 目标缓存 */,
+        final int maxBlank /* 可写容量 */, final MessageExtBrokerInner msg /* 待写入msg*/);
 
     /**
      * After batched message serialization, write MapedByteBuffer

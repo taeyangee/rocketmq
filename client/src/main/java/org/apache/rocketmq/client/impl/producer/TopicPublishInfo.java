@@ -23,12 +23,12 @@ import org.apache.rocketmq.common.message.MessageQueue;
 import org.apache.rocketmq.common.protocol.route.QueueData;
 import org.apache.rocketmq.common.protocol.route.TopicRouteData;
 
-public class TopicPublishInfo {
-    private boolean orderTopic = false;
+public class TopicPublishInfo { /* 关键：topic路由信息， @see also TopicRouteData，即TopicPublishInfo的通信层形态 */
+    private boolean orderTopic = false; /* 该topic 顺序*/
     private boolean haveTopicRouterInfo = false;
-    private List<MessageQueue> messageQueueList = new ArrayList<MessageQueue>();
-    private volatile ThreadLocalIndex sendWhichQueue = new ThreadLocalIndex();
-    private TopicRouteData topicRouteData;
+    private List<MessageQueue> messageQueueList = new ArrayList<MessageQueue>(); /* 消息队列：topic/brokerName/queueId */
+    private volatile ThreadLocalIndex sendWhichQueue = new ThreadLocalIndex(); /* 选择队列用的index， 每次自增1 */
+    private TopicRouteData topicRouteData; /* 网络传输形态的topic路由信息*/
 
     public boolean isOrderTopic() {
         return orderTopic;
@@ -66,7 +66,7 @@ public class TopicPublishInfo {
         this.haveTopicRouterInfo = haveTopicRouterInfo;
     }
 
-    public MessageQueue selectOneMessageQueue(final String lastBrokerName) {
+    public MessageQueue selectOneMessageQueue(final String lastBrokerName) { /* 轮训一个 非lastBrokerName的broker */
         if (lastBrokerName == null) {
             return selectOneMessageQueue();
         } else {
@@ -84,7 +84,7 @@ public class TopicPublishInfo {
         }
     }
 
-    public MessageQueue selectOneMessageQueue() {
+    public MessageQueue selectOneMessageQueue() { /* 轮训调一个 broker */
         int index = this.sendWhichQueue.getAndIncrement();
         int pos = Math.abs(index) % this.messageQueueList.size();
         if (pos < 0)

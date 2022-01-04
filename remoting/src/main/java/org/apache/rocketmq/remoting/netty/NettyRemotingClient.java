@@ -162,7 +162,7 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
                 }
             });
 
-        Bootstrap handler = this.bootstrap.group(this.eventLoopGroupWorker).channel(NioSocketChannel.class)
+        Bootstrap handler = this.bootstrap.group(this.eventLoopGroupWorker).channel(NioSocketChannel.class)  /* 线程组： 网络IO用*/
             .option(ChannelOption.TCP_NODELAY, true)
             .option(ChannelOption.SO_KEEPALIVE, false)
             .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, nettyClientConfig.getConnectTimeoutMillis())
@@ -181,7 +181,7 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
                         }
                     }
                     pipeline.addLast(
-                        defaultEventExecutorGroup,
+                        defaultEventExecutorGroup, /* 线程组： handler执行用*/
                         new NettyEncoder(),
                         new NettyDecoder(),
                         new IdleStateHandler(0, 0, nettyClientConfig.getClientChannelMaxIdleTimeSeconds()),
@@ -361,7 +361,7 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
     public RemotingCommand invokeSync(String addr, final RemotingCommand request, long timeoutMillis)
         throws InterruptedException, RemotingConnectException, RemotingSendRequestException, RemotingTimeoutException {
         long beginStartTime = System.currentTimeMillis();
-        final Channel channel = this.getAndCreateChannel(addr);
+        final Channel channel = this.getAndCreateChannel(addr); /* addr=null, 先和任一namesrv建连 */
         if (channel != null && channel.isActive()) {
             try {
                 if (this.rpcHook != null) {
@@ -409,7 +409,7 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
 
     private Channel getAndCreateNameserverChannel() throws InterruptedException {
         String addr = this.namesrvAddrChoosed.get();
-        if (addr != null) {
+        if (addr != null) { /* 缓存 */
             ChannelWrapper cw = this.channelTables.get(addr);
             if (cw != null && cw.isOK()) {
                 return cw.getChannel();
@@ -436,7 +436,7 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
 
                         this.namesrvAddrChoosed.set(newAddr);
                         log.info("new name server is chosen. OLD: {} , NEW: {}. namesrvIndex = {}", addr, newAddr, namesrvIndex);
-                        Channel channelNew = this.createChannel(newAddr);
+                        Channel channelNew = this.createChannel(newAddr); /* 实际和 namesrv 建连 */
                         if (channelNew != null) {
                             return channelNew;
                         }

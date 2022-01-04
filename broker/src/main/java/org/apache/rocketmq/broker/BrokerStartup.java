@@ -61,7 +61,7 @@ public class BrokerStartup {
     public static BrokerController start(BrokerController controller) {
         try {
 
-            controller.start();
+            controller.start(); /* 入口3： controller启动  */
 
             String tip = "The broker[" + controller.getBrokerConfig().getBrokerName() + ", "
                 + controller.getBrokerAddr() + "] boot success. serializeType=" + RemotingCommand.getSerializeTypeConfigInThisServer();
@@ -107,14 +107,14 @@ public class BrokerStartup {
                 System.exit(-1);
             }
 
-            final BrokerConfig brokerConfig = new BrokerConfig();
-            final NettyServerConfig nettyServerConfig = new NettyServerConfig();
-            final NettyClientConfig nettyClientConfig = new NettyClientConfig();
+            final BrokerConfig brokerConfig = new BrokerConfig(); /* broker业务配置 */
+            final NettyServerConfig nettyServerConfig = new NettyServerConfig(); /* broker 对于 client来说是server */
+            final NettyClientConfig nettyClientConfig = new NettyClientConfig(); /* broker 对于 namesrv来说是client */
 
             nettyClientConfig.setUseTLS(Boolean.parseBoolean(System.getProperty(TLS_ENABLE,
                 String.valueOf(TlsSystemConfig.tlsMode == TlsMode.ENFORCING))));
             nettyServerConfig.setListenPort(10911);
-            final MessageStoreConfig messageStoreConfig = new MessageStoreConfig();
+            final MessageStoreConfig messageStoreConfig = new MessageStoreConfig(); /* broker文件存储配置 */
 
             if (BrokerRole.SLAVE == messageStoreConfig.getBrokerRole()) {
                 int ratio = messageStoreConfig.getAccessMessageInMemoryMaxRatio() - 10;
@@ -165,7 +165,7 @@ public class BrokerStartup {
             switch (messageStoreConfig.getBrokerRole()) {
                 case ASYNC_MASTER:
                 case SYNC_MASTER:
-                    brokerConfig.setBrokerId(MixAll.MASTER_ID);
+                    brokerConfig.setBrokerId(MixAll.MASTER_ID); /* Master ， broker = 0 */
                     break;
                 case SLAVE:
                     if (brokerConfig.getBrokerId() <= 0) {
@@ -215,7 +215,7 @@ public class BrokerStartup {
             // remember all configs to prevent discard
             controller.getConfiguration().registerConfig(properties);
 
-            boolean initResult = controller.initialize();
+            boolean initResult = controller.initialize(); /* 入口1： 初始化 */
             if (!initResult) {
                 controller.shutdown();
                 System.exit(-3);
@@ -232,7 +232,7 @@ public class BrokerStartup {
                         if (!this.hasShutdown) {
                             this.hasShutdown = true;
                             long beginTime = System.currentTimeMillis();
-                            controller.shutdown();
+                            controller.shutdown();  /* 入口2： 关闭 */
                             long consumingTimeTotal = System.currentTimeMillis() - beginTime;
                             log.info("Shutdown hook over, consuming total time(ms): {}", consumingTimeTotal);
                         }

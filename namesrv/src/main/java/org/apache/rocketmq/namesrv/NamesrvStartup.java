@@ -81,8 +81,8 @@ public class NamesrvStartup {
 
         final NamesrvConfig namesrvConfig = new NamesrvConfig();
         final NettyServerConfig nettyServerConfig = new NettyServerConfig();
-        nettyServerConfig.setListenPort(9876);
-        if (commandLine.hasOption('c')) {
+        nettyServerConfig.setListenPort(9876); /* server默认端口： 9876 */
+        if (commandLine.hasOption('c')) { /* -c 可以引入配置文件 */
             String file = commandLine.getOptionValue('c');
             if (file != null) {
                 InputStream in = new BufferedInputStream(new FileInputStream(file));
@@ -98,7 +98,7 @@ public class NamesrvStartup {
             }
         }
 
-        if (commandLine.hasOption('p')) {
+        if (commandLine.hasOption('p')) { /* -p 存打印看看参数 */
             InternalLogger console = InternalLoggerFactory.getLogger(LoggerName.NAMESRV_CONSOLE_NAME);
             MixAll.printObjectProperties(console, namesrvConfig);
             MixAll.printObjectProperties(console, nettyServerConfig);
@@ -111,7 +111,7 @@ public class NamesrvStartup {
             System.out.printf("Please set the %s variable in your environment to match the location of the RocketMQ installation%n", MixAll.ROCKETMQ_HOME_ENV);
             System.exit(-2);
         }
-
+        /* 日志配置 */
         LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
         JoranConfigurator configurator = new JoranConfigurator();
         configurator.setContext(lc);
@@ -123,7 +123,7 @@ public class NamesrvStartup {
         MixAll.printObjectProperties(log, namesrvConfig);
         MixAll.printObjectProperties(log, nettyServerConfig);
 
-        final NamesrvController controller = new NamesrvController(namesrvConfig, nettyServerConfig);
+        final NamesrvController controller = new NamesrvController(namesrvConfig, nettyServerConfig); /* 实例化NamesrvController */
 
         // remember all configs to prevent discard
         controller.getConfiguration().registerConfig(properties);
@@ -137,7 +137,7 @@ public class NamesrvStartup {
             throw new IllegalArgumentException("NamesrvController is null");
         }
 
-        boolean initResult = controller.initialize();
+        boolean initResult = controller.initialize(); /* 入口1：初始化*/
         if (!initResult) {
             controller.shutdown();
             System.exit(-3);
@@ -146,12 +146,12 @@ public class NamesrvStartup {
         Runtime.getRuntime().addShutdownHook(new ShutdownHookThread(log, new Callable<Void>() {
             @Override
             public Void call() throws Exception {
-                controller.shutdown();
+                controller.shutdown(); /* 入口3： 监听jvm关闭*/
                 return null;
             }
         }));
 
-        controller.start();
+        controller.start(); /* 入口2：初始化*/
 
         return controller;
     }
