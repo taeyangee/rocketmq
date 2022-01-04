@@ -322,13 +322,13 @@ public class MQClientAPIImpl {
         switch (communicationMode) {
             case ONEWAY:
                 this.remotingClient.invokeOneway(addr, request, timeoutMillis);
-                return null;
+                return null; /* 同sync相比， 只invoke不处理结果 */
             case ASYNC:
                 final AtomicInteger times = new AtomicInteger();
                 long costTimeAsync = System.currentTimeMillis() - beginStartTime;
                 if (timeoutMillis < costTimeAsync) {
                     throw new RemotingTooMuchRequestException("sendMessage call timeout");
-                }
+                } /* invoke并触发回调 */
                 this.sendMessageAsync(addr, brokerName, msg, timeoutMillis - costTimeAsync, request, sendCallback, topicPublishInfo, instance,
                     retryTimesWhenSendFailed, times, context, producer);
                 return null;
@@ -336,7 +336,7 @@ public class MQClientAPIImpl {
                 long costTimeSync = System.currentTimeMillis() - beginStartTime;
                 if (timeoutMillis < costTimeSync) {
                     throw new RemotingTooMuchRequestException("sendMessage call timeout");
-                }
+                } /* invoke 并生成了 result */
                 return this.sendMessageSync(addr, brokerName, msg, timeoutMillis - costTimeSync, request);
             default:
                 assert false;
@@ -501,7 +501,7 @@ public class MQClientAPIImpl {
             }
             case ResponseCode.SUCCESS: {
                 SendStatus sendStatus = SendStatus.SEND_OK;
-                switch (response.getCode()) {
+                switch (response.getCode()) { /* 写错了？ */
                     case ResponseCode.FLUSH_DISK_TIMEOUT:
                         sendStatus = SendStatus.FLUSH_DISK_TIMEOUT;
                         break;

@@ -503,7 +503,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
         long beginTimestampFirst = System.currentTimeMillis();
         long beginTimestampPrev = beginTimestampFirst;
         long endTimestamp = beginTimestampFirst;
-        TopicPublishInfo topicPublishInfo = this.tryToFindTopicPublishInfo(msg.getTopic()); /* 关键：查看路由信息（内部可能和name srv通信） */
+        TopicPublishInfo topicPublishInfo = this.tryToFindTopicPublishInfo(msg.getTopic()); /* 关键：查看路由信息（内部可能和name srv通信）. topic = 目标topic or TWB102（broker将自动创建目标topic） */
         if (topicPublishInfo != null && topicPublishInfo.ok()) {
             boolean callTimeout = false;
             MessageQueue mq = null; /* 当前使用的msg queue */
@@ -639,7 +639,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
         TopicPublishInfo topicPublishInfo = this.topicPublishInfoTable.get(topic);
         if (null == topicPublishInfo || !topicPublishInfo.ok()) {
             this.topicPublishInfoTable.putIfAbsent(topic, new TopicPublishInfo());
-            this.mQClientFactory.updateTopicRouteInfoFromNameServer(topic); /* 从namesrv拉取缓存 topic的路由信息：信息反向通知回到producer */
+            this.mQClientFactory.updateTopicRouteInfoFromNameServer(topic); /* 从namesrv拉取缓存topic路由信息：并信息反向通知回到producer */
             topicPublishInfo = this.topicPublishInfoTable.get(topic);
         }
 
@@ -653,13 +653,13 @@ public class DefaultMQProducerImpl implements MQProducerInner {
     }
 
     private SendResult sendKernelImpl(final Message msg,
-                                      final MessageQueue mq,
+                                      final MessageQueue mq,    /* topic + brokerName + queueId */
                                       final CommunicationMode communicationMode,
                                       final SendCallback sendCallback,
                                       final TopicPublishInfo topicPublishInfo,
                                       final long timeout) throws MQClientException, RemotingException, MQBrokerException, InterruptedException {
         long beginStartTime = System.currentTimeMillis();
-        String brokerAddr = this.mQClientFactory.findBrokerAddressInPublish(mq.getBrokerName());
+        String brokerAddr = this.mQClientFactory.findBrokerAddressInPublish(mq.getBrokerName()); /* 只发送到 topic master */
         if (null == brokerAddr) {
             tryToFindTopicPublishInfo(mq.getTopic());
             brokerAddr = this.mQClientFactory.findBrokerAddressInPublish(mq.getBrokerName());
@@ -688,7 +688,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                     sysFlag |= MessageSysFlag.TRANSACTION_PREPARED_TYPE;
                 }
 
-                if (hasCheckForbiddenHook()) {
+                if (hasCheckForbiddenHook()) { /* 发送前hook： 是否拦截 */
                     CheckForbiddenContext checkForbiddenContext = new CheckForbiddenContext();
                     checkForbiddenContext.setNameSrvAddr(this.defaultMQProducer.getNamesrvAddr());
                     checkForbiddenContext.setGroup(this.defaultMQProducer.getProducerGroup());
@@ -717,7 +717,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                     if (msg.getProperty("__STARTDELIVERTIME") != null || msg.getProperty(MessageConst.PROPERTY_DELAY_TIME_LEVEL) != null) {
                         context.setMsgType(MessageType.Delay_Msg);
                     }
-                    this.executeSendMessageHookBefore(context);
+                    this.executeSendMessageHookBefore(context); /* 发送前hook */
                 }
                 /* 构建消息头 */
                 SendMessageRequestHeader requestHeader = new SendMessageRequestHeader();
@@ -787,7 +787,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                             mq.getBrokerName(),
                             msg,
                             requestHeader,
-                            timeout - costTimeSync,
+                            timeout - costTimeSync, /* 扣除了已消耗时间 */
                             communicationMode,
                             context,
                             this);
